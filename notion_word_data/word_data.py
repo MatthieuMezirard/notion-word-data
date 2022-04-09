@@ -32,15 +32,15 @@ class WordData:
         }
         self.session = session
 
-        def fetch_word_data():
-            response = self.get_web_data(self.url, self.headers, session)
+        def fetch_word_data() -> None:
+            response = self.get_web_data(self.url, self.headers, self.session)
             soup = self.parse_web_data(response)
             self.set_word_data(soup)
 
         fetch_word_data()
 
     @classmethod
-    def check_language(cls, lang: str):
+    def check_language(cls, lang: str) -> None:
         with open("SUPPORTED_LANGUAGES.md", "r", encoding="utf-8") as file:
             if ("```" + lang.lower() + "```") not in file.read():
                 raise errors.InvalidLanguage(lang)
@@ -62,7 +62,6 @@ class WordData:
         def set_word_name() -> None:
             name = soup.find(attrs={"data-dobid": "hdw"})
             if not isinstance(name, types.NoneType):
-                print(name.text)
                 self.data[utils.prettify(name.text)] = {}
             else:
                 raise errors.InvalidWord(self.search_word)
