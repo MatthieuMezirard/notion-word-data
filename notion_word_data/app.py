@@ -20,18 +20,18 @@ def main() -> None:
         return_words = pool.starmap(
             worker_process, zip(words, itertools.repeat(session))
         )
-    words_to_delete = [word[0] for word in return_words if word is not None]
+    words_to_delete = [word[0] for word in return_words if word]
     delete_word(words_to_delete, "WORDS.md", 4)
 
 
-def get_words_to_find(file_name: str, index: int) -> list[str]:
+def get_words_to_find(file_name: str, index: int, default_lang="en") -> list[str]:
     words_list = []
     with open(file_name, "r", encoding="utf-8") as file:
         lines = file.readlines()[index:]
         for line in lines:
             data = line.split(",")
             if len(data) < 2:
-                data.append("en")
+                data.append(default_lang)
             elif len(data) > 2:
                 raise errors.InvalidDeclarations(data, line)
             words_list.append(
