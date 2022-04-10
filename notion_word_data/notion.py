@@ -1,3 +1,5 @@
+"""A custom module to update a Notion database with the given data."""
+
 # System imports
 import json
 import os
@@ -20,7 +22,15 @@ NOTION_ENDPOINT_BLOCKS = "https://api.notion.com/v1/blocks/"
 
 
 class NotionSync:
+    """A class to update a Notion database from a database ID with the given data."""
+
     def __init__(self, data: dict, session: requests.sessions.Session) -> None:
+        """The initialization function of NotionSync.
+
+        Args:
+            data (dict): The dictionary containing all the data to be added.
+            session (requests.sessions.Session): The session used to fetch data.
+        """
         self.data = data
         self.name = utils.dict_get_element_by_index(self.data, 0)
         general_logger.debug('Initializing Notion class for "%s".', self.name)
@@ -45,6 +55,7 @@ class NotionSync:
         self.session = session
 
         def update_notion():
+            """Update a Notion database with the given data."""
             id_list = self.get_database_id(self.headers, self.payload, self.session)
             for page_id in id_list:
                 self.delete_page(page_id, self.headers, self.session)
@@ -56,6 +67,20 @@ class NotionSync:
     def query_database(
         cls, headers: dict, payload: dict, session: requests.sessions.Session
     ) -> dict:
+        """Get the content of a database.
+
+        Args:
+            headers (dict): The headers used to process the request.
+            payload (dict): The payload used to process the request.
+            session (requests.sessions.Session): The session used to process the request.
+
+        Raises:
+            errors.InvalidDatabaseID: An exception to indicate that the given database ID is invalid.
+            errors.InvalidToken: An exception to indicate that the given token is invalid.
+
+        Returns:
+            dict: A dictionary of the existing data.
+        """
         general_logger.debug("Querying the database.")
         database_url = f"{NOTION_ENDPOINT_DATABASE}{DATABASE_ID}/query"
         response = session.post(url=database_url, headers=headers, json=payload)
@@ -70,6 +95,16 @@ class NotionSync:
     def get_database_id(
         cls, headers: dict, payload: dict, session: requests.sessions.Session
     ) -> list[str]:
+        """Get the ID of the pages matching the word name.
+
+        Args:
+            headers (dict): The headers used to process the request.
+            payload (dict): The payload used to process the request.
+            session (requests.sessions.Session): The session used to process the request.
+
+        Returns:
+            list[str]: A list of all the pages ID matching the word name.
+        """
         general_logger.debug(
             'Getting the database ID for "%s".',
             payload["filter"]["and"][1]["title"]["starts_with"],
@@ -82,6 +117,13 @@ class NotionSync:
     def create_page(
         cls, data_to_send: dict, headers: dict, session: requests.sessions.Session
     ) -> None:
+        """Create a new database entry.
+
+        Args:
+            data_to_send (dict): The dictionary containing the data you want to add to a database entry.
+            headers (dict): The headers used to process the request.
+            session (requests.sessions.Session): The payload used to process the request.
+        """
         general_logger.debug("Creating a page.")
         data_to_send = json.dumps(data_to_send)
         response = session.post(
@@ -97,6 +139,14 @@ class NotionSync:
         headers: dict,
         session: requests.sessions.Session,
     ) -> None:
+        """Update a database entry.
+
+        Args:
+            page_id (str): The ID of the database entry to be updated.
+            data_to_send (dict): The dictionary containing the data you want to add to the database entry.
+            headers (dict): The headers used to process the request.
+            session (requests.sessions.Session): The session used to process the request.
+        """
         general_logger.debug("Updating a page.")
         data_to_send = json.dumps(data_to_send)
         page_url = f"{NOTION_ENDPOINT_PAGE}{page_id}"
@@ -107,15 +157,28 @@ class NotionSync:
     def delete_page(
         cls, page_id: str, headers: dict, session: requests.sessions.Session
     ) -> None:
+        """Delete a database entry.
+
+        Args:
+            page_id (str): The ID of the database entry to be deleted.
+            headers (dict): The headers used to process the request.
+            session (requests.sessions.Session): The payload used to process the request.
+        """
         general_logger.debug("Deleting a page.")
         page_url = f"{NOTION_ENDPOINT_BLOCKS}{page_id}"
         response = session.delete(url=page_url, headers=headers)
         response.raise_for_status()
 
     def set_new_page(self) -> None:
+        """Create a new page with the given data."""
         general_logger.debug('Setting new page for "%s".', self.name)
 
         def set_word_block() -> dict:
+            """Set the JSON block for the 'Word' property.
+
+            Returns:
+                dict: A dictionary containing the 'Word' property.
+            """
             general_logger.debug('Setting word block for "%s".', self.name)
             word_property = {"title": [{"text": {"content": self.name}}]}
             return word_property
@@ -124,6 +187,11 @@ class NotionSync:
         self.json_data["properties"]["Word"] = word_block
 
         def set_pos_block() -> dict:
+            """Set the JSON block for the 'Part Of Speech' property.
+
+            Returns:
+                dict: A dictionary containing the 'Part Of Speech' property.
+            """
             general_logger.debug('Setting pos block for "%s".', self.name)
             pos_list = list(self.data[utils.dict_get_element_by_index(self.data, 0)])
             pos_property = {"multi_select": [{"name": pos} for pos in pos_list]}
@@ -138,9 +206,19 @@ class NotionSync:
         )[0]
 
         def set_infos_block() -> None:
+            """Set the JSON block for the 'Informations' property.
+
+            Returns:
+                dict: A dictionary containing the 'Informations' property.
+            """
             general_logger.debug('Setting infos block for "%s".', self.name)
 
             def get_pos_color() -> dict:
+                """Get the Notion color for the parts of speechs.
+
+                Returns:
+                    dict: A dictionary containing the parts of speechs and their corresponding colors.
+                """
                 general_logger.debug('Getting pos color for "%s".', self.name)
                 existing_data = self.query_database(
                     self.headers, self.payload, self.session

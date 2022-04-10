@@ -1,3 +1,5 @@
+"""The main module, the only one you should run."""
+
 # System imports
 import itertools
 import multiprocessing
@@ -17,6 +19,7 @@ PROCESSES = 4
 
 
 def main() -> None:
+    """The main function, which gets called at runtime."""
     general_logger.debug("Start main process.")
     words = get_words_to_find("WORDS.md", 4)
     session = requests.Session()
@@ -62,6 +65,19 @@ def main() -> None:
 
 
 def get_words_to_find(file_name: str, index: int, default_lang="en") -> list[str]:
+    """Get the list of words you want to fetch data for, and their corresponding languages.
+
+    Args:
+        file_name (str): The file name containing the words.
+        index (int): The number of lines that should be ignored at the beginning of the file.
+        default_lang (str, optional): The default word language. Defaults to "en".
+
+    Raises:
+        errors.InvalidDeclaration: An exception to indicate that a declaration in WORDS.md is invalid.
+
+    Returns:
+        list[str]: A list containing each word to find, and its language.
+    """
     general_logger.debug("Searching for words.")
     words_list = []
     with open(file_name, "r", encoding="utf-8") as file:
@@ -97,6 +113,13 @@ def get_words_to_find(file_name: str, index: int, default_lang="en") -> list[str
 
 
 def delete_word(words: list[str], file_name: str, index: int) -> None:
+    """Delete the words in a file from a given list.
+
+    Args:
+        words (list[str]): The words to be deleted.
+        file_name (str): The file name containing the words.
+        index (int): The number of lines that should be ignored at the beginning of the file.
+    """
     general_logger.debug("Deleting %i word(s).", len(words))
     with open(file_name, "r", encoding="utf-8") as file:
         lines = file.readlines()
@@ -112,9 +135,18 @@ def delete_word(words: list[str], file_name: str, index: int) -> None:
 
 
 def worker_process(
-    word: str,
+    word: list[str],
     session: requests.sessions.Session,
 ) -> list[str]:
+    """The process that will be repeated by the multiprocessing's workers.
+
+    Args:
+        word (list[str]): A list containing the word and the language to be processed.
+        session (requests.sessions.Session): The session used to process the request.
+
+    Returns:
+        list[str]: A list containing the word name, its language and the result of the process.
+    """
     word_name = word[0]
     word_lang = word[1]
     try:
