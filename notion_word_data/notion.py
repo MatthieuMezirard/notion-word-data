@@ -1,15 +1,15 @@
 # System imports
-import os
 import json
+import os
 
 # Third party imports
 import dotenv
 import requests
 
 # Custom imports
-from notion_word_data import utils
-from notion_word_data import errors
+from notion_word_data import errors, logs, utils
 
+general_logger = logs.setup_logging_general(f"{__name__}.general")
 
 dotenv.load_dotenv()
 DATABASE_ID = os.environ.get("DATABASE_ID")
@@ -23,6 +23,7 @@ class NotionSync:
     def __init__(self, data: dict, session: requests.sessions.Session) -> None:
         self.data = data
         self.name = utils.dict_get_element_by_index(self.data, 0)
+        general_logger.debug('Initializing Notion class for "%s".', self.name)
         self.identifier = ""
         self.json_data = {"parent": {"database_id": DATABASE_ID}, "properties": {}}
 
@@ -55,6 +56,7 @@ class NotionSync:
     def query_database(
         cls, headers: dict, payload: dict, session: requests.sessions.Session
     ) -> dict:
+        general_logger.debug("Querying the database.")
         database_url = f"{NOTION_ENDPOINT_DATABASE}{DATABASE_ID}/query"
         response = session.post(url=database_url, headers=headers, json=payload)
         if response.status_code == 400 and response.reason == "Bad Request":
@@ -68,6 +70,10 @@ class NotionSync:
     def get_database_id(
         cls, headers: dict, payload: dict, session: requests.sessions.Session
     ) -> list[str]:
+        general_logger.debug(
+            'Getting the database ID for "%s".',
+            payload["filter"]["and"][1]["title"]["starts_with"],
+        )
         existing_data = cls.query_database(headers, payload, session)
         id_list = [page["id"] for page in existing_data["results"]]
         return id_list
@@ -76,6 +82,7 @@ class NotionSync:
     def create_page(
         cls, data_to_send: dict, headers: dict, session: requests.sessions.Session
     ) -> None:
+        general_logger.debug("Creating a page.")
         data_to_send = json.dumps(data_to_send)
         response = session.post(
             url=NOTION_ENDPOINT_PAGE, data=data_to_send, headers=headers
@@ -90,6 +97,7 @@ class NotionSync:
         headers: dict,
         session: requests.sessions.Session,
     ) -> None:
+        general_logger.debug("Updating a page.")
         data_to_send = json.dumps(data_to_send)
         page_url = f"{NOTION_ENDPOINT_PAGE}{page_id}"
         response = session.patch(url=page_url, data=data_to_send, headers=headers)
@@ -99,12 +107,16 @@ class NotionSync:
     def delete_page(
         cls, page_id: str, headers: dict, session: requests.sessions.Session
     ) -> None:
+        general_logger.debug("Deleting a page.")
         page_url = f"{NOTION_ENDPOINT_BLOCKS}{page_id}"
         response = session.delete(url=page_url, headers=headers)
         response.raise_for_status()
 
     def set_new_page(self) -> None:
+        general_logger.debug('Setting new page for "%s".', self.name)
+
         def set_word_block() -> dict:
+            general_logger.debug('Setting word block for "%s".', self.name)
             word_property = {"title": [{"text": {"content": self.name}}]}
             return word_property
 
@@ -112,6 +124,7 @@ class NotionSync:
         self.json_data["properties"]["Word"] = word_block
 
         def set_pos_block() -> dict:
+            general_logger.debug('Setting pos block for "%s".', self.name)
             pos_list = list(self.data[utils.dict_get_element_by_index(self.data, 0)])
             pos_property = {"multi_select": [{"name": pos} for pos in pos_list]}
             return pos_property
@@ -125,7 +138,10 @@ class NotionSync:
         )[0]
 
         def set_infos_block() -> None:
+            general_logger.debug('Setting infos block for "%s".', self.name)
+
             def get_pos_color() -> dict:
+                general_logger.debug('Getting pos color for "%s".', self.name)
                 existing_data = self.query_database(
                     self.headers, self.payload, self.session
                 )
